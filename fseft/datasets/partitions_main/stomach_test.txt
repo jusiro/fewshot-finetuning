@@ -1,0 +1,5 @@
+data/s0004/ct.nii.gz   data/s0004/segmentations/stomach.nii.gz
+data/s0029/ct.nii.gz   data/s0029/segmentations/stomach.nii.gz
+data/s0502/ct.nii.gz   data/s0502/segmentations/stomach.nii.gz
+data/s0785/ct.nii.gz   data/s0785/segmentations/stomach.nii.gz
+data/s0801/ct.nii.gz   data/s0801/segmentations/stomach.nii.gz

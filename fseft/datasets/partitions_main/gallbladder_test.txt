@@ -1,0 +1,5 @@
+data/s0004/ct.nii.gz   data/s0004/segmentations/gallbladder.nii.gz
+data/s0029/ct.nii.gz   data/s0029/segmentations/gallbladder.nii.gz
+data/s0502/ct.nii.gz   data/s0502/segmentations/gallbladder.nii.gz
+data/s0778/ct.nii.gz   data/s0778/segmentations/gallbladder.nii.gz
+data/s0801/ct.nii.gz   data/s0801/segmentations/gallbladder.nii.gz
