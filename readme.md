@@ -12,7 +12,7 @@ This repository contains a framework for building novel adapters and few-shots l
 [Julio Silva-Rodriguez](https://scholar.google.es/citations?user=1UMYgHMAAAAJ&hl), [Jose Dolz](https://scholar.google.es/citations?user=yHQIFFMAAAAJ&hl),
 [Ismail Ben Ayed](https://scholar.google.es/citations?user=29vyUccAAAAJ&hl) <br/>
 [LIVIA](https://liviamtl.ca/), ETS, Montreal <br/>
-[paper]() | [code](https://github.com/jusiro/fewshot-finetuning) |
+[paper](https://arxiv.org/abs/2303.17051) | [code](https://github.com/jusiro/fewshot-finetuning) |
 
 ## 💡 Preparation
 Create enviroment, clone repository and install required packages (check compatibility with your cuda version).
