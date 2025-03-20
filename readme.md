@@ -82,10 +82,10 @@ The implementation and pre-training of the foundational model is largely based o
 
 If you find this repository useful, please consider citing this paper:
 ```
-@article{silvaRodriguez2023fseft,
-  title={Transductive few-shot adapters for medical image segmentation},
-  author={Julio Silva-Rodriguez and Jose Dolz and Ismail Ben Ayed},
-  journal={arXiv Preprint},
+@inproceedings{FSEFT,
+  title={Towards Foundation Models and Few-Shot Parameter-Efficient Fine-Tuning for Volumetric Organ Segmentation},
+  author={Julio Silva-Rodríguez and Jose Dolz and Ismail {Ben Ayed}},
+  booktitle={Int. Workshop on Foundation Models for General Medical AI (MICCAIw)},
   year={2023}
 }
 ```
