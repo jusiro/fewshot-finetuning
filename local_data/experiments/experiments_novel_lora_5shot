@@ -1,0 +1,17 @@
+# LoRA (5-shot)
+python main_fseft.py --model_id fseft --dataset totalseg --organ heart_myocardium --k 5 --method LoRA --decoder fine-tuned --seeds 3
+python main_fseft.py --model_id fseft --dataset totalseg --organ heart_atrium_left --k 5 --method LoRA --decoder fine-tuned --seeds 3
+python main_fseft.py --model_id fseft --dataset totalseg --organ heart_atrium_right --k 5 --method LoRA --decoder fine-tuned --seeds 3
+python main_fseft.py --model_id fseft --dataset totalseg --organ heart_ventricle_left --k 5 --method LoRA --decoder fine-tuned --seeds 3
+python main_fseft.py --model_id fseft --dataset totalseg --organ heart_ventricle_right --k 5 --method LoRA --decoder fine-tuned --seeds 3
+python main_fseft.py --model_id fseft --dataset totalseg --organ lung_lower_lobe_left --k 5 --method LoRA --decoder fine-tuned --seeds 3
+python main_fseft.py --model_id fseft --dataset totalseg --organ lung_lower_lobe_right --k 5 --method LoRA --decoder fine-tuned --seeds 3
+python main_fseft.py --model_id fseft --dataset totalseg --organ lung_middle_lobe_right --k 5 --method LoRA --decoder fine-tuned --seeds 3
+python main_fseft.py --model_id fseft --dataset totalseg --organ lung_upper_lobe_left --k 5 --method LoRA --decoder fine-tuned --seeds 3
+python main_fseft.py --model_id fseft --dataset totalseg --organ lung_upper_lobe_right --k 5 --method LoRA --decoder fine-tuned --seeds 3
+python main_fseft.py --model_id fseft --dataset totalseg --organ gluteus_maximus_left --k 5 --method LoRA --decoder fine-tuned --seeds 3
+python main_fseft.py --model_id fseft --dataset totalseg --organ gluteus_maximus_right --k 5 --method LoRA --decoder fine-tuned --seeds 3
+python main_fseft.py --model_id fseft --dataset totalseg --organ gluteus_medius_left --k 5 --method LoRA --decoder fine-tuned --seeds 3
+python main_fseft.py --model_id fseft --dataset totalseg --organ gluteus_medius_right --k 5 --method LoRA --decoder fine-tuned --seeds 3
+python main_fseft.py --model_id fseft --dataset totalseg --organ gluteus_minimus_left --k 5 --method LoRA --decoder fine-tuned --seeds 3
+python main_fseft.py --model_id fseft --dataset totalseg --organ gluteus_minimus_right --k 5 --method LoRA --decoder fine-tuned --seeds 3

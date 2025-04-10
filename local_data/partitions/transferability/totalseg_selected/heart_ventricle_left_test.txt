@@ -1,0 +1,5 @@
+14_TotalSegmentator/data/s1259/ct.nii.gz   14_TotalSegmentator/data/s1259/segmentations/heart_ventricle_left.nii.gz
+14_TotalSegmentator/data/s1269/ct.nii.gz   14_TotalSegmentator/data/s1269/segmentations/heart_ventricle_left.nii.gz
+14_TotalSegmentator/data/s1272/ct.nii.gz   14_TotalSegmentator/data/s1272/segmentations/heart_ventricle_left.nii.gz
+14_TotalSegmentator/data/s1277/ct.nii.gz   14_TotalSegmentator/data/s1277/segmentations/heart_ventricle_left.nii.gz
+14_TotalSegmentator/data/s1330/ct.nii.gz   14_TotalSegmentator/data/s1330/segmentations/heart_ventricle_left.nii.gz

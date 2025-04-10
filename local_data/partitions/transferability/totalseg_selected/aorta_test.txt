@@ -1,0 +1,5 @@
+14_TotalSegmentator/data/s0004/ct.nii.gz   14_TotalSegmentator/data/s0004/segmentations/aorta.nii.gz
+14_TotalSegmentator/data/s0502/ct.nii.gz   14_TotalSegmentator/data/s0502/segmentations/aorta.nii.gz
+14_TotalSegmentator/data/s0227/ct.nii.gz   14_TotalSegmentator/data/s0227/segmentations/aorta.nii.gz
+14_TotalSegmentator/data/s0785/ct.nii.gz   14_TotalSegmentator/data/s0785/segmentations/aorta.nii.gz
+14_TotalSegmentator/data/s0801/ct.nii.gz   14_TotalSegmentator/data/s0801/segmentations/aorta.nii.gz

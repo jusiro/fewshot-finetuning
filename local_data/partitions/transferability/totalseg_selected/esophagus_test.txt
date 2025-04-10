@@ -1,0 +1,5 @@
+14_TotalSegmentator/data/s0004/ct.nii.gz   14_TotalSegmentator/data/s0004/segmentations/esophagus.nii.gz
+14_TotalSegmentator/data/s0502/ct.nii.gz   14_TotalSegmentator/data/s0502/segmentations/esophagus.nii.gz
+14_TotalSegmentator/data/s0516/ct.nii.gz   14_TotalSegmentator/data/s0516/segmentations/esophagus.nii.gz
+14_TotalSegmentator/data/s0785/ct.nii.gz   14_TotalSegmentator/data/s0785/segmentations/esophagus.nii.gz
+14_TotalSegmentator/data/s0801/ct.nii.gz   14_TotalSegmentator/data/s0801/segmentations/esophagus.nii.gz

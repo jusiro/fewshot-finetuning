@@ -3,30 +3,31 @@ import os
 import numpy as np
 import torch
 import json
-import torch.distributed as dist
+import time
 
-from torch.nn.parallel import DistributedDataParallel
 from monai.inferers import sliding_window_inference
 from tqdm import tqdm
-from fseft.models.utils import load_foundational_model, set_model_finetuning
+
+from fseft.utils import load_model, set_model_peft
+from models.configs import get_model_config
 from fseft.datasets.dataset import get_loader
-from fseft.transductive.TI_modules import ProportionConstraint
+from fseft.datasets.configs import get_task_config
+from fseft.datasets.utils import load_query
 from utils.losses import BinaryDice3D
 from utils.metrics import dice_score, extract_topk_largest_candidates
 from utils.misc import set_seeds
 from utils.scheduler import LinearWarmupCosineAnnealingLR
-from utils.visualization import visualize_prediction
-from pretrain.datasets.utils import UNIVERSAL_TEMPLATE
+from utils.visualization import visualize_query
 
 # Check training hardware gpu/cpu
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 # Set seeds for reproducibility
-# set_seeds(42, use_cuda=device is 'cuda')
+set_seeds(42, use_cuda=device == 'cuda')
 
 
 def train(args, train_loader, model, optimizer):
-    model.train()
+    args.adapt_hp["set_training_mode"](model, args)
 
     loss_dice_ave = 0
     epoch_iterator = tqdm(
@@ -39,12 +40,15 @@ def train(args, train_loader, model, optimizer):
         logit_map = model(x)
 
         # Activation
-        pred = torch.sigmoid(logit_map)
+        if args.objective == "binary":
+            pred = torch.sigmoid(logit_map)
+        elif args.objective == "multiclass":
+            pred = torch.softmax(logit_map, dim=1)
 
         # Compute loss
         dsc_loss = BinaryDice3D()(pred, y)
 
-        # Backward and models update
+        # Backward and modeling update
         loss = dsc_loss
         loss.backward()
         optimizer.step()
@@ -66,232 +70,242 @@ def train(args, train_loader, model, optimizer):
     return loss_dice_ave / len(epoch_iterator)
 
 
-def test(args, model):
+def test(args, model, overlap_inference=0.25):
     model.eval()
 
-    # Prediction
-    x = torch.tensor(args.query["image"], dtype=torch.float32).to(device).unsqueeze(0)
+    # Retrieve testing image
+    x = args.query["image"].detach().clone().to(device).unsqueeze(0)
+
+    # Predict logits
     with torch.no_grad():
-        yhat = sliding_window_inference(x, (args.roi_x, args.roi_y, args.roi_z), 1, model,
-                                        overlap=0.25, mode='gaussian')
+        yhat = sliding_window_inference(x, (args.model_cfg["roi_x"], args.model_cfg["roi_y"], args.model_cfg["roi_z"]),
+                                        1, model, overlap=overlap_inference, mode='gaussian')
 
-    if args.method == 'generalization':
-        if args.organ == 'gallbladder':
-            organ_template = 'gall'
-        elif args.organ == 'kidney_left':
-            organ_template = 'lkidney'
-        else:
-            organ_template = args.organ
+    # Produce categorical predictions
+    if args.objective == "binary":
+        yhat = (torch.sigmoid(yhat) > 0.5).squeeze(dim=1).cpu().detach().numpy()
+    elif args.objective == "multiclass":
+        yhat = torch.argmax(yhat, 1).cpu().detach().numpy()
 
-        idx = np.argwhere(np.array(list(UNIVERSAL_TEMPLATE.keys())) == organ_template)[0,0]
-        yhat = yhat[:, idx, :, :, :]
+    # Produce class-wise metrics
+    dice_all = {}
+    for i_organ in range(len(args.selected_organs)):
+        # Retrieve pred and mask per class
+        pred_i = (yhat == (i_organ+1))
+        mask_i = (args.query["label"] == (i_organ+1))
 
-    if args.postprocess:
-        yhat = (yhat > 0.5).squeeze().cpu().detach().numpy()
-        yhat = extract_topk_largest_candidates(yhat, 1)
-        yhat = torch.tensor(yhat).unsqueeze(0)
+        # Post-process mask
+        if args.post_process:
+            pred_i = torch.tensor(extract_topk_largest_candidates(pred_i, 1)).unsqueeze(0)
 
-    # Metric extraction
-    dice, recall, precision = dice_score(yhat.to(device),
-                                         torch.tensor(args.query["label"], dtype=torch.float32).to(device))
-    print("DICE: " + str(np.round(dice.item(), 4)))
+        # Metric extraction
+        dice, recall, precision = dice_score(torch.tensor(pred_i, dtype=torch.float32).to(device),
+                                             torch.tensor(mask_i, dtype=torch.float32).to(device))
+        dice_all[args.selected_organs[i_organ]] = np.round(dice.item(), 4)
 
-    if not os.path.isdir(args.out_path + '/visualizations/'):
-        os.mkdir(args.out_path + '/visualizations/')
+    # Store prediction for further visualizations
+    args.query["prediction"] = yhat
 
-    # Prepare experiment name
-    path_out = args.out_path + '/visualizations/' + args.method + '_' + args.classifier + '_' + args.organ + '_k_' +\
-               str(args.k) + '_fold_' + str(args.iFold)
-    if args.transductive_inference:
-        path_out = path_out + '_transductive'
-
-    # Save visualization of method
-    mask = (yhat.detach().cpu().numpy()) > 0.5
-    visualize_prediction(np.squeeze(args.query["image"]), np.squeeze(args.query["label"]), np.squeeze(mask), path_out)
-
-    # Save gt visualization if it does not exist
-    path_out = args.out_path + '/visualizations/' + 'gt' + '_' + args.organ + '_fold_' + str(args.iFold)
-    if not os.path.isfile(path_out):
-        visualize_prediction(np.squeeze(args.query["image"]), np.squeeze(args.query["label"]),
-                             np.squeeze(args.query["label"]), path_out)
-
-    return np.round(dice.item(), 4)
+    return dice_all
 
 
 def process(args):
 
-    # Set partitions from path and target organ
-    args.data_txt_path = {'train': args.data_txt_path + args.organ + '_train.txt',
-                          'test': args.data_txt_path + args.organ + '_test.txt'}
+    # Get dataset config and partitions
+    get_task_config(args)
 
-    # In the case of fine-tuning with all train subset, we only train once, and test on three folds
-    if args.k >= 30:
-        args.folds = [1]
-
-    # Set environment for distributed learning
-    rank = 0
-    if args.dist:
-        dist.init_process_group(backend="nccl", init_method="env://")
-        rank = args.local_rank
-    args.device = torch.device(f"cuda:{rank}")
-    torch.cuda.set_device(args.device)
-
-    # Run training-testing for each fold
+    # Run adaptation-testing for each fold
     dice_all = []
     for iFold in args.folds:
+        t1 = time.time()
+
         args.iFold = iFold
-        print(args.method + '_' + args.classifier + '_' + args.organ + '_k_' + str(args.k) +
+        print(args.method + '_' + '_' + args.organ + '_k_' + str(args.k) +
               '_fold_' + str(args.iFold), end="\n")
 
-        # Set datasets
-        train_loader, train_sampler = get_loader(args)
+        # Get model config
+        get_model_config(args)
 
-        # Load pretrained models
-        model = load_foundational_model(args)
+        # Init train learning curve
+        args.lc = {"loss_dice_train": [], "loss_dice_val": [], "best_epoch": 0, "best_val_dice": 1.0}
 
-        # Modify base models for fine-tuning
-        model = set_model_finetuning(model, args)
+        # Load pretrained modeling
+        model = load_model(args)
+
+        # Modify base modeling for fine-tuning
+        model = set_model_peft(model, args)
 
         # Set device
         model.to(device)
 
-        # Init prototype-based inferece
-        if args.classifier == 'prototype':
-            model.classifier[-1].init_prototype(model, train_loader, args.method)
-            torch.cuda.empty_cache()
-
-        # Set model to distributed
-        if args.dist:
-            model = DistributedDataParallel(model, device_ids=[args.device])
+        # Set datasets
+        train_loader = get_loader(args)
 
         # Set optimizer and scheduler
-        optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
-        if args.scheduler:
-            scheduler = LinearWarmupCosineAnnealingLR(optimizer, warmup_epochs=args.warmup_epoch,
-                                                      max_epochs=args.epochs,
-                                                      warmup_start_lr=args.lr / args.warmup_epoch)
-
-        # If required, init transductive inference module - based on proportion constraints
-        if args.transductive_inference:
-            args.TI = ProportionConstraint(args, model)
+        optimizer = torch.optim.AdamW(model.parameters(), lr=args.adapt_hp["lr"], weight_decay=0.0)
+        if args.adapt_hp["scheduler"]:
+            scheduler = LinearWarmupCosineAnnealingLR(optimizer, warmup_epochs=args.adapt_hp["warmup_epoch"],
+                                                      max_epochs=args.adapt_hp["epochs"],
+                                                      warmup_start_lr=args.adapt_hp["lr"]/args.adapt_hp["warmup_epoch"])
 
         # Train model
         if not args.method == 'generalization':
-            args.epoch = 1
-            while args.epoch < args.epochs:
-                if args.dist:
-                    dist.barrier()
-                    train_sampler.set_epoch(args.epoch)
+            args.epoch, early_stop = 1, False
+
+            while (args.epoch < args.adapt_hp["epochs"]) and (early_stop is False):
 
                 # Train epoch
                 loss_dice = train(args, train_loader, model, optimizer)
-                if args.transductive_inference:
-                    if args.epoch >= args.pretrain_epochs:
-                        TI_penalty = args.TI.step(model, optimizer)
-                        torch.cuda.empty_cache()
-                        print('Epoch=%d: TI_penalty=%2.5f' % (args.epoch, TI_penalty))
+                args.lc["loss_dice_train"].append(loss_dice)
+
+                # Evaluate if early stopping is set
+                if args.early_stop_criteria == "val":
+                    model.eval()
+                    with torch.no_grad():
+                        # Forward
+                        logit_map = model(args.data_val_dict["image"].clone().to(device).to(torch.float32))
+                        # Activation
+                        pred = torch.sigmoid(logit_map)
+                        # Compute loss
+                        dsc_loss_val = BinaryDice3D()(pred,
+                                                      args.data_val_dict["label"].clone().to(device).to(torch.float32))
+                        dsc_loss_val = np.round(dsc_loss_val.item(), decimals=4)
+
+                        args.lc["loss_dice_val"].append(dsc_loss_val)
+                        print("val loss: " + str(dsc_loss_val))
 
                 # Update epoch
                 args.epoch += 1
 
                 # Update optimizer scheduler
-                if args.scheduler:
+                if args.adapt_hp["scheduler"]:
                     scheduler.step()
 
-        # Test models
-        if args.k >= 30:  # Fine-tuning on all train subset - we only train one model
-            for iFold in [1, 2, 3, 4, 5]:
-                args.iFold = iFold
-                _, _ = get_loader(args)
-                dice_fold = test(args, model)
-                dice_all.append(dice_fold)
-        else:   # Few-shot
-            dice_fold = test(args, model)
-            dice_all.append(dice_fold)
+                # Early stopping based on train convergence
+                if args.early_stop_criteria == "train":
+                    if args.epoch > (args.adapt_hp["pat"]+11):
+                        lc_smooth = list(np.convolve(args.lc["loss_dice_" + args.early_stop_criteria],
+                                                     np.ones(10)/10, mode='valid'))
+                        if (lc_smooth[-args.adapt_hp["pat"]] - lc_smooth[-1]) < 0.001:
+                            print("Train loss on plateau... early stopping")
+                            print("Plateau DSC loss: {loss_now} -- Old DSC loss: {loss_old}".format(
+                                loss_now=str(round(lc_smooth[-1], 4)),
+                                loss_old=str(round(lc_smooth[-args.adapt_hp["pat"]], 4))))
+                            early_stop = True
+                # Early stopping based on validation convergence
+                elif args.early_stop_criteria == "val":
+                    if dsc_loss_val < args.lc["best_val_dice"]:
+                        print("Validation loss improved...")
+                        args.lc["best_val_dice"] = dsc_loss_val
+                        args.best_weights = model.state_dict()
+                        c = 1
+                    else:
+                        c += 1
+                        if c > args.adapt_hp["patience"]:
+                            print("Val loss on plateau... early stopping - loading best model")
+                            early_stop = True
+                            model.load_state_dict(args.best_weights)
 
-        if args.dist:
-            dist.barrier()
+        t2 = time.time()
+        minutes, seconds = divmod(t2 - t1, 60)
+        hours, minutes = divmod(minutes, 60)
+        print("Training time: %d:%02d:%02d" % (hours, minutes, seconds))
+
+        # Testing the adaptation stage
+        dice_test = []
+        for iFold in range(args.ntest):
+            print("Testing sample: " + str(iFold + 1))
+            args.iFold = iFold
+            # Load testing sample
+            load_query(args)
+            # Evaluate model
+            dice_sample = test(args, model)
+            dice_test.append(dice_sample)
+            # Visualization of results
+            if args.visualization:
+                visualize_query(args)
+
+        dice_test = dict(zip(
+            list(dice_test[0].keys()),
+            [np.round(np.mean([isample[organ] for isample in dice_test])*100, 2) for organ in args.selected_organs]
+        ))
+
+        print("Average DSC: " + str(dice_test))
+        dice_all.append(dice_test)
+
+    # Average across seeds
+    dice_all = dict(zip(
+        list(dice_all[0].keys()),
+        [np.round(np.mean([isample[organ] for isample in dice_all]), 2) for organ in args.selected_organs]
+    ))
 
     # Save results and the end of cross-validation
-    if rank == 0:
-        # Prepare path results and experiment id
-        path_results = args.out_path + '/' + args.organ + '_results.json'
-        exp_id = args.method + '_' + args.classifier + '_k_' + str(args.k)
-        if args.transductive_inference:
-            exp_id = exp_id + '_transductive'
+    path_results = args.out_path + args.organ + '_results.json'
+    exp_id = args.method + '_k_' + str(args.k) + "_" + args.decoder + "Decoder"
 
-        # Save the results
-        if not os.path.isfile(path_results):
-            d = {exp_id: [dice_all, np.mean(dice_all)]}
-        else:
-            with open(path_results) as infile:
-                d = json.load(infile)
-            d[exp_id] = [dice_all, np.mean(dice_all)]
-        with open(path_results, 'w') as fp:
-            json.dump(d, fp)
+    # Save the results_prev
+    if not os.path.isfile(path_results):
+        d = {exp_id: dice_all}
+    else:
+        with open(path_results) as infile:
+            d = json.load(infile)
+        d[exp_id] = dice_all
+    with open(path_results, 'w') as fp:
+        json.dump(d, fp)
 
-    print("Average DICE: " + str(np.mean(dice_all)))
-
-    if args.dist:
-        dist.destroy_process_group()
+    print("Results across folds.")
+    print("Average DICE: " + str(dice_all))
 
 
 def main():
     parser = argparse.ArgumentParser()
 
     # Folders, dataset, etc.
-    parser.add_argument('--data_root_path',
-                        default="./data/14_TotalSegmentator/",
-                        help='data root path')
-    parser.add_argument('--model_path', default='./fseft/pretrained_weights/pretrained_model.pth',
-                        help='path of foundational models')
-    parser.add_argument('--data_txt_path', default='./fseft/datasets/partitions_main/',
-                        help='path with partitions')
-    parser.add_argument('--organ', default='kidney_left', help='Target organ')
-    parser.add_argument('--folds', default=[1, 2, 3, 4, 5], help='number of testing folds')
+    parser.add_argument('--out_path', default='./local_data/results/')
 
-    # Storing results
-    parser.add_argument('--out_path', default='./fseft/results/')
-
-    # Training options
+    # Experiment: model, dataset, training shots, ...
+    parser.add_argument('--model_id', default='fseft',
+                        help='Options: fseft - selfsup -btcv - clipdriven - suprem_unet - suprem_swinunetr')
+    parser.add_argument('--dataset', default="totalseg", help='Options: totalseg - flare')
+    parser.add_argument('--organ', default='duodenum',
+                        help='Target organ - e.g.: selected - spleen - kidney_left - gallbladder - esophagus          '
+                             '                     liver - pancreas - stomach - duodenum - aorta - heart_myocardium   '
+                             '                     heart_atrium_left - heart_atrium_right - heart_ventricle_left      '
+                             '                     heart_ventricle_right - lung_lower_lobe_left                       '
+                             '                     lung_lower_lobe_right - lung_middle_lobe_right                     '
+                             '                     lung_upper_lobe_left - lung_upper_lobe_right                       '
+                             '                     gluteus_maximus_left - gluteus_maximus_right - gluteus_medius_left '
+                             '                     gluteus_medius_right - gluteus_minimus_left - gluteus_minimus_right'
+                        )
     parser.add_argument('--k', default=1, type=int, help='Number of shots')
-    parser.add_argument('--method', default='linear_probe',
-                        help='Options: scratch - generalization - finetuning_all - finetuning_last -'
-                             'linear_probe - spatial_adapter ')
-    parser.add_argument('--classifier', default='linear', help='linear - prototype')
-    parser.add_argument('--batch_size', default=1, type=int)
-    parser.add_argument('--epochs', default=100, type=int)
-    parser.add_argument('--num_samples', default=6, type=int)
-    parser.add_argument('--lr', default=0.5, type=float, help='Learning rate')
-    parser.add_argument('--scheduler', default=True, type=lambda x: (str(x).lower() == 'true'))
-    parser.add_argument('--warmup_epoch', default=1, type=int, help='number of warmup epochs')
-    parser.add_argument('--weight_decay', default=1e-5, help='Weight Decay')
-    parser.add_argument('--transductive_inference', default=False, type=lambda x: (str(x).lower() == 'true'))
-    parser.add_argument('--margin', default=0.3, type=float, help='margin for proportion constraint')
-    parser.add_argument('--lambda_TI', default=0.1, type=float, help='TI relative weigth')
-    parser.add_argument('--pretrain_epochs', default=50, type=float, help='Pretrain epochs before TI')
-    parser.add_argument('--adapter_kernel_size', default=3, type=int, help='adapter kernel size')
+    parser.add_argument('--seeds', default=3, type=int, help='number of experimental seeds')
+
+    # Training hyper-params
+    parser.add_argument('--early_stop_criteria', default='train', help='train - val - none')
+
+    # PEFT method for encoder
+    parser.add_argument('--method', default='LP',
+                        help='No adaptation:              | generalization                          | '
+                             'Full FT:                    | scratch - FT                            | '
+                             'PEFT:                                                                 | '
+                             '  Selective:                | Bias - Affine                           | '
+                             '  Additive(adapter):        | AdapterCNN - Compacter - AdaptFormer    | '
+                             '  Additive(reparam.):       | LoRA                                    | '
+                             'Black-box (bb) adapters:    | LP - bb3DAdapter - bbAdapter            | '
+                        )
+
+    # Transferring bottleneck/decoder
+    parser.add_argument('--decoder', default="frozen", help='| frozen | fine-tuned | new |')
+    parser.add_argument('--bottleneck', default="frozen", help='| frozen | fine-tuned | new |')
 
     # Resources
-    parser.add_argument('--dist', default=False, type=lambda x: (str(x).lower() == 'true'))
-    parser.add_argument("--local_rank", type=int)
-    parser.add_argument("--device")
-    parser.add_argument('--num_workers', default=1, type=int, help='workers number for DataLoader')
+    parser.add_argument('--num_workers', default=0, type=int, help='workers number for DataLoader')
 
-    # Volume pre-processing
-    parser.add_argument('--a_min', default=-175, type=float, help='a_min in ScaleIntensityRanged')
-    parser.add_argument('--a_max', default=250, type=float, help='a_max in ScaleIntensityRanged')
-    parser.add_argument('--b_min', default=0.0, type=float, help='b_min in ScaleIntensityRanged')
-    parser.add_argument('--b_max', default=1.0, type=float, help='b_max in ScaleIntensityRanged')
-    parser.add_argument('--space_x', default=1.5, type=float, help='spacing in x direction')
-    parser.add_argument('--space_y', default=1.5, type=float, help='spacing in y direction')
-    parser.add_argument('--space_z', default=1.5, type=float, help='spacing in z direction')
-    parser.add_argument('--roi_x', default=96, type=int, help='roi size in x direction')
-    parser.add_argument('--roi_y', default=96, type=int, help='roi size in y direction')
-    parser.add_argument('--roi_z', default=96, type=int, help='roi size in z direction')
+    # Predictions post_process
+    parser.add_argument('--post_process', default=False, type=lambda x: (str(x).lower() == 'true'))
 
-    # Predicitons post-processing
-    parser.add_argument('--postprocess', default=True, type=lambda x: (str(x).lower() == 'true'))
+    # Predictions visualization
+    parser.add_argument('--visualization', default=False, type=lambda x: (str(x).lower() == 'true'))
 
     args, unknown = parser.parse_known_args()
 

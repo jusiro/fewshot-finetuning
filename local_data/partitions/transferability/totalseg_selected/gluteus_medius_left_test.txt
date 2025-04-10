@@ -1,0 +1,5 @@
+14_TotalSegmentator/data/s1136/ct.nii.gz   14_TotalSegmentator/data/s1136/segmentations/gluteus_medius_left.nii.gz
+14_TotalSegmentator/data/s1137/ct.nii.gz   14_TotalSegmentator/data/s1137/segmentations/gluteus_medius_left.nii.gz
+14_TotalSegmentator/data/s1141/ct.nii.gz   14_TotalSegmentator/data/s1141/segmentations/gluteus_medius_left.nii.gz
+14_TotalSegmentator/data/s1256/ct.nii.gz   14_TotalSegmentator/data/s1256/segmentations/gluteus_medius_left.nii.gz
+14_TotalSegmentator/data/s1301/ct.nii.gz   14_TotalSegmentator/data/s1301/segmentations/gluteus_medius_left.nii.gz

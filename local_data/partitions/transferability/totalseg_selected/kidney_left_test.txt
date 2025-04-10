@@ -1,0 +1,5 @@
+14_TotalSegmentator/data/s0004/ct.nii.gz   14_TotalSegmentator/data/s0004/segmentations/kidney_left.nii.gz
+14_TotalSegmentator/data/s0029/ct.nii.gz   14_TotalSegmentator/data/s0029/segmentations/kidney_left.nii.gz
+14_TotalSegmentator/data/s0516/ct.nii.gz   14_TotalSegmentator/data/s0516/segmentations/kidney_left.nii.gz
+14_TotalSegmentator/data/s0785/ct.nii.gz   14_TotalSegmentator/data/s0785/segmentations/kidney_left.nii.gz
+14_TotalSegmentator/data/s0801/ct.nii.gz   14_TotalSegmentator/data/s0801/segmentations/kidney_left.nii.gz

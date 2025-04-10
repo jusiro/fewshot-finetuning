@@ -127,7 +127,7 @@ def main():
     parser = argparse.ArgumentParser()
 
     # Folders, dataset, etc.
-    parser.add_argument('--out_path', default='./pretrain/results/', help='The path resume from checkpoint')
+    parser.add_argument('--out_path', default='./pretrain/results_prev/', help='The path resume from checkpoint')
     parser.add_argument('--data_root_path', default="./data/", help='data root path')
     parser.add_argument('--stage', default="train", help='train/val')
     parser.add_argument('--data_txt_path', default={'train': './pretrain/datasets/partial.txt'}, help='data txt path')
@@ -145,7 +145,8 @@ def main():
     parser.add_argument('--balanced', default=True, type=lambda x: (str(x).lower() == 'true'))
     parser.add_argument('--shuffle', default=True, type=lambda x: (str(x).lower() == 'true'))
     parser.add_argument('--num_samples', default=1, type=int, help='sample number in each ct')
-    parser.add_argument('--pretrained_model', default='./pretrain/pretrained_weights/swin_unetr.base_5000ep_f48_lr2e-4_pretrained.pt',
+    parser.add_argument('--pretrained_model',
+                        default='./pretrain/pretrained_weights/btcv.pt',
                         help='The path of pretrain model')
 
     # Resources
