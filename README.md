@@ -13,7 +13,7 @@ adapting medical image segmentation foundation models. This setting considers th
 🏅 <span style="color:red">*Best Paper Award at 1st MICCAI Workshop on Foundation Models (MedAGI)*</span> \
 [Julio Silva-Rodríguez](https://scholar.google.es/citations?user=1UMYgHMAAAAJ&hl), [Jose Dolz](https://scholar.google.es/citations?user=yHQIFFMAAAAJ&hl),
 [Ismail Ben Ayed](https://scholar.google.es/citations?user=29vyUccAAAAJ&hl) - ÉTS Montréal <br/>
-Medical Image Analysis, 2025\
+📜 Medical Image Analysis, 2025\
 [Project](https://github.com/jusiro/fewshot-finetuning) | [Journal](https://arxiv.org/abs/2303.17051) | [ArXiv](https://arxiv.org/abs/2303.17051) |
 
 This repository contains a framework for adapting foundation models for volumetric (CT) medical image segmentation: 
