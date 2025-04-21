@@ -92,9 +92,10 @@ the weights link provided, and store it at `models/pretrained_weights/[ID].pth` 
 | **FSEFT**                                                                                                                                                                                  | 2023  | Swin-UNETR   | fseft            | *Ours* ⭐                                                                                      | [LINK](https://drive.google.com/file/d/18yLNxmWGnVifQNeYYwyyu56Cg4tWV9aW/view?usp=sharing)                                                    |
  | [SuPreM](https://openreview.net/pdf?id=AhizIPytk4)                                                                                                                                         | 2024  | Swin-UNETR   | suprem_swinunetr | [SuPreM](https://github.com/MrGiovanni/SuPreM)                                                | [LINK](https://huggingface.co/MrGiovanni/SuPreM/resolve/main/supervised_suprem_swinunetr_2100.pth?download=true)                              |
 | [SuPreM](https://openreview.net/pdf?id=AhizIPytk4)                                                                                                                                         | 2024  | U-Net        | suprem_unet      | [SuPreM](https://github.com/MrGiovanni/SuPreM)                                                | [LINK](https://huggingface.co/MrGiovanni/SuPreM/resolve/main/supervised_suprem_unet_2100.pth?download=true)                                   |
+
 The configuration of each model is located at `models/configs.py`.
 
-**Note**: Please, check other author's repositories for an updated link to the weights.
+**Note**: Please, check other authors' repositories for an updated link to the weights.
 
 ## 2.3. Black-box Adapters
 
