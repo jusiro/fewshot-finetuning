@@ -11,7 +11,7 @@ adapting medical image segmentation foundation models. This setting considers th
 
 <b>Towards Foundation Models and Few-Shot Parameter-Efficient Fine-Tuning for Volumetric Organ Segmentation</b> <br/>
 [Julio Silva-Rodríguez](https://scholar.google.es/citations?user=1UMYgHMAAAAJ&hl), [Jose Dolz](https://scholar.google.es/citations?user=yHQIFFMAAAAJ&hl),
-[Ismail Ben Ayed](https://scholar.google.es/citations?user=29vyUccAAAAJ&hl) - ÉTS Montréal <br/>
+[Ismail Ben Ayed](https://scholar.google.es/citations?user=29vyUccAAAAJ&hl) ⋅ ÉTS Montréal <br/>
 📜 Medical Image Analysis, 2025\
 🏅 <span style="color:red">*Best Paper Award at 1st MICCAI Workshop on Foundation Models (MedAGI'23)*</span> \
 | [Project](https://jusiro.github.io/projects/fseft.html) | [Journal](https://arxiv.org/abs/2303.17051) | [ArXiv](https://arxiv.org/abs/2303.17051) |
