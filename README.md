@@ -135,9 +135,12 @@ If you find this repository useful, please consider citing this paper:
 ```
 @article{FSEFT,
   title={Towards Foundation Models and Few-Shot Parameter-Efficient Fine-Tuning for Volumetric Organ Segmentation},
-  author={Julio Silva-Rodríguez and Jose Dolz and Ismail Ben Ayed},
-  journal={Medical Image Analysis},
-  year={2025}
+  author={Julio Silva-Rodríguez and Jose Dolz and Ismail {Ben Ayed}},
+  journal = {Medical Image Analysis},
+  volume = {103},
+  pages = {103596},
+  year = {2025},
+  issn = {1361-8415},
 }
 ```
 
