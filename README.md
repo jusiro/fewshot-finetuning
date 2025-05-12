@@ -14,7 +14,7 @@ adapting medical image segmentation foundation models. This setting considers th
 [Ismail Ben Ayed](https://scholar.google.es/citations?user=29vyUccAAAAJ&hl) ⋅ ÉTS Montréal <br/>
 📜 Medical Image Analysis, 2025\
 🏅 <span style="color:red">*Best Paper Award at 1st MICCAI Workshop on Foundation Models (MedAGI'23)*</span> \
-| [Project](https://jusiro.github.io/projects/fseft.html) | [Journal](https://www.sciencedirect.com/science/article/pii/S1361841525001434) | [ArXiv](https://arxiv.org/abs/2303.17051) |
+| [Project](https://jusiro.github.io/projects/fseft.html) | [Journal](https://www.sciencedirect.com/science/article/pii/S1361841525001434) | [ArXiv](https://arxiv.org/abs/2303.17051v4) |
 
 This repository contains a framework for adapting foundation models for volumetric (CT) medical image segmentation: 
 
