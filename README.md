@@ -1,5 +1,13 @@
 # Few-Shot Efficient Fine-Tuning
 
+### News
+
+- *🔥 We have a follow-up paper @ MICCAI'25 exploring improved LoRA versions for PEFT - take a look if interested to [ARENA](https://arxiv.org/abs/2507.15793).*
+- *🔥 The [FMLLM @ MICCAI'25](https://sites.google.com/view/miccai-2025-tutorial) tutorial slides on foundation models for medical image segmentation are available at [`FMLLM-miccai-25`](./documents/tutorials/fmllm-miccai-25).*
+- *🔥 The [FOMMIA @ MICCAI'24](https://sites.google.com/view/miccai-2024-tutorial) tutorial slides on foundation models for medical image segmentation are available at [`FOMMIA-miccai-25`](./documents/tutorials/fommia-miccai-24).*
+
+---
+
 The recent popularity of foundation models and the pre-train-and-adapt paradigm, where a large-scale model is transferred to downstream tasks,
 is gaining attention for volumetric medical image segmentation. However, current transfer learning strategies devoted to full fine-tuning for
 transfer learning may require significant resources and yield sub-optimal results when the labeled data of the target task is scarce. This makes
